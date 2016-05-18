@@ -11,7 +11,7 @@ title                    : "Practical Scala"
 title_separator          : "-"
 name                     : "Josef Vlach"
 description              : "Website about Scala programming."
-url                      : "www.vlachjosef.com"
+url                      : #"www.vlachjosef.com"
 baseurl                  : # the subpath of your site, e.g. "/blog"
 gh_repo                  :
 teaser                   : # filename of teaser fallback teaser image placed in /images/, .e.g. "500x300.png"
@@ -20,7 +20,7 @@ words_per_minute         : 200
 comments:
   provider               : "disqus"
   disqus:
-    shortname            : "vlachjosef" # https://help.disqus.com/customer/portal/articles/466208-what-s-a-shortname-
+    shortname            : "practicalscala" # https://help.disqus.com/customer/portal/articles/466208-what-s-a-shortname-
   facebook:
     # https://developers.facebook.com/docs/plugins/comments
     appid                :
@@ -204,3 +204,16 @@ compress_html:
   clippings: all
   ignore:
     envs: development
+
+defaults:
+  # _posts
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: single
+      author_profile: true
+      read_time: true
+      comments: true
+      share: true
+      related: true

@@ -2,3 +2,4 @@
 main:
   - title: "About"
     url: http://www.vlachjosef.com/about
+    #url: http://localhost:4000/about

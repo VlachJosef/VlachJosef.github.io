@@ -1,9 +1,9 @@
 ---
 title: Scala Tagged types - Introduction
-date: 2016-05-08T11:15:28+01:00
+date: 2016-05-21T17:22:12+01:00
 ---
 
-Tagged types - maybe you've heard about them, maybe you not, maybe you've even consider to use them, but decided not to bother in the end. Whatever the case in this article I will introduce them, explain what they are, tell why they are useful and show why to bother to use them.
+Tagged types - maybe you've heard about them, maybe you not, maybe you've even consider to use them, but decided not to bother in the end. Whatever the case in this article I will introduce them, explain what they are, show why they are useful and why to bother to use them.
 
 Although all explanation is based on contrived example, it is not harming our goal to show what advantages Tagged types brings us.
 
@@ -255,4 +255,4 @@ I hope this article convince you that by using Tagged types you will gain lots o
 
 In second part of this article we will cover two main implementation of Tagged types in Scala. Namely Scalaz implementation and Shapeless implementation.
 
-All code examples can be found on [Github](https://github.com/VlachJosef/tagged-types-introduction)
+All code examples can be found on [Github](https://github.com/VlachJosef/tagged-types-introduction).
