@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.0.5">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2016-05-21T17:33:09+01:00</updated><id>/</id><title>Practical Scala</title><subtitle>Website about Scala programming.</subtitle><author><name>Josef Vlach</name><email>vlach.josef@gmail.com</email><uri>http://www.vlachjosef.com</uri></author><entry><title>Scala Tagged types - Introduction</title><link href="/tagged-types-introduction/" rel="alternate" type="text/html" title="Scala Tagged types - Introduction" /><published>2016-05-21T17:22:12+01:00</published><updated>2016-05-21T17:22:12+01:00</updated><id>/tagged-types-introduction</id><content type="html" xml:base="/tagged-types-introduction/">&lt;p&gt;Tagged types - maybe you’ve heard about them, maybe you not, maybe you’ve even consider to use them, but decided not to bother in the end. Whatever the case in this article I will introduce them, explain what they are, show why they are useful and why to bother to use them.&lt;/p&gt;
+
+&lt;p&gt;Although all explanation is based on contrived example, it is not harming our goal to show what advantages Tagged types brings us.&lt;/p&gt;
+
+&lt;h2 id=&quot;problem&quot;&gt;Problem&lt;/h2&gt;
+
+&lt;p&gt;Let’s imagine that we are building game server for mobile RPG game and one of game features is PvP battle. PvP battle allow players play against each other. Let’s suppose that there are multiple PvP arenas in the game and that in every arena players will be placed to random bracket with another players who entered that arena. Goal of the player is to beat other players in his bracket.&lt;/p&gt;
+
+&lt;p&gt;We can model this situation in Scala with case classes like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;a name=&quot;model-no-tags&quot;&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// unique identifier of the arena
+&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// name of the arena
+&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// unique identifier of pvp bracket
+&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;arenaId&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// to which arena this bracket belongs
+&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// unique player profile identifier
+&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;, &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// arena to bracket mapping
+&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;cm&quot;&gt;/**
+     * Change current bracket of player in arena
+     */&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;changeBracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;PlayerProfile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;This is not only way how to model this situation, but we will use it for a sake of simplicity and convenience in this article as our driving model.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Now let’s create state where there exist two arenas: &lt;em&gt;Fire Pit&lt;/em&gt; and &lt;em&gt;Ice Dungeon&lt;/em&gt;, where Fire Pit contains two brackets and Ice Dungeon contains single bracket, and let’s create three players and put them into different arena brackets. Situation can then look like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;firePit&lt;/span&gt;    &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;firePit&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Fire Pit&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;iceDungeon&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;iceDungeon&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Ice Dungeon&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;bracket1&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;firePit&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket2&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;bracket2&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;firePit&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket3&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;bracket3&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;iceDungeon&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;player1&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firePit&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;iceDungeon&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player2&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;player2&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firePit&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;player3&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;player3&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firePit&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;iceDungeon&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Let’s focus our attention on the way how we defined value for field &lt;code class=&quot;highlighter-rouge&quot;&gt;bracketMapping&lt;/code&gt; of &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile&lt;/code&gt;. For example in case of &lt;code class=&quot;highlighter-rouge&quot;&gt;player2&lt;/code&gt; we defined its value in terms of &lt;code class=&quot;highlighter-rouge&quot;&gt;firePit&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;bracket1&lt;/code&gt; instances like this &lt;code class=&quot;highlighter-rouge&quot;&gt;Map(firePit.id -&amp;gt; bracket1.id)&lt;/code&gt;. Let’s take a closer look on this.&lt;/p&gt;
+
+&lt;p&gt;When used like this everything looks clear and sound since we have everything displayed on one screen, thus every logical connection in our model is clearly visible, but with elapsed time and as the code will become more and more complex, definition like &lt;code class=&quot;highlighter-rouge&quot;&gt;bracketMapping&lt;/code&gt; from &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile&lt;/code&gt; will gradually become unclear and confusing. When we would look on &lt;code class=&quot;highlighter-rouge&quot;&gt;bracketMapping&lt;/code&gt; definition without any comment, how clear does it look to you?&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;, &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;To me it doesn’t seem clear at all. &lt;strong&gt;What actually keys of that map represent? And what are values?&lt;/strong&gt; Not to mention that actual name of a field &lt;code class=&quot;highlighter-rouge&quot;&gt;bracketMapping&lt;/code&gt; doesn’t help here too much.&lt;/p&gt;
+
+&lt;p&gt;On top of this there is even worse problem with such model definition. Can you spot an error in this implementation of &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile&lt;/code&gt; instance method &lt;code class=&quot;highlighter-rouge&quot;&gt;changeBracket&lt;/code&gt;?&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;changeBracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;PlayerProfile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;We made a mistake and interchanged expression &lt;code class=&quot;highlighter-rouge&quot;&gt;bracket.id&lt;/code&gt; with &lt;code class=&quot;highlighter-rouge&quot;&gt;arena.id&lt;/code&gt;. We can see correct implementation in our &lt;a href=&quot;#model-no-tags&quot;&gt;initial implementation&lt;/a&gt;. The worst thing about this bug is that &lt;strong&gt;there was nothing to warn us when we made this mistake&lt;/strong&gt;. Code compile just fine.&lt;/p&gt;
+
+&lt;p&gt;These types of bugs result in weird errors, where things stop to work as expected and it is usually hard to figure out where the bug is. And the worst is that they are really easy to made.&lt;/p&gt;
+
+&lt;p&gt;So in our short code example we discovered two fundamental problems:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Constructs like &lt;code class=&quot;highlighter-rouge&quot;&gt;Map[String, String]&lt;/code&gt; are really hard to comprehend.&lt;/li&gt;
+  &lt;li&gt;Since every identifier is &lt;code class=&quot;highlighter-rouge&quot;&gt;String&lt;/code&gt; it is easy to use wrong identifier (&lt;code class=&quot;highlighter-rouge&quot;&gt;bracket.id&lt;/code&gt;) in place of another identifier (&lt;code class=&quot;highlighter-rouge&quot;&gt;arena.id&lt;/code&gt;).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;solution&quot;&gt;Solution&lt;/h2&gt;
+
+&lt;p&gt;Desirable solution should brings us these properties:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;We want to keep using &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt; data type as it is really convenient for our needs.&lt;/li&gt;
+  &lt;li&gt;We want compiler to catch improper use of &lt;code class=&quot;highlighter-rouge&quot;&gt;id&lt;/code&gt;s for us (identifier of one class in place of identifier of second class).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To solve aforementioned problems and to get these properties we can use various techniques, one of which is to use Tagged types.&lt;/p&gt;
+
+&lt;h3 id=&quot;tagged-types&quot;&gt;Tagged types&lt;/h3&gt;
+
+&lt;p&gt;Let’s first look at how our model will look like with use of Tagged types:&lt;/p&gt;
+
+&lt;p&gt;&lt;a name=&quot;model-with-tags&quot;&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ArenaId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// &amp;lt;- tagged type
+&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;BracketId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// &amp;lt;- tagged type
+&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;arenaId&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ArenaId&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// &amp;lt;- tagged type
+&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ProfileId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// &amp;lt;- tagged type
+&lt;/span&gt;    &lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;ArenaId&lt;/span&gt;, &lt;span class=&quot;kt&quot;&gt;BracketId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// &amp;lt;- tagged types
+&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;changeBracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;PlayerProfile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;This is much easier to read and reason about. Even glance look at a type:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;ArenaId&lt;/span&gt;, &lt;span class=&quot;kt&quot;&gt;BracketId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;is telling us what keys of this map represents and what values of this map stands for. The connection between keys and values of this &lt;code class=&quot;highlighter-rouge&quot;&gt;Map&lt;/code&gt; and associated case classes is evident.&lt;/p&gt;
+
+&lt;p&gt;&lt;a name=&quot;magic-types&quot;&gt;&lt;/a&gt;
+But what are these magical types &lt;code class=&quot;highlighter-rouge&quot;&gt;ArenaId&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;BracketId&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;ProfileId&lt;/code&gt;, where are they coming from?&lt;/p&gt;
+
+&lt;p&gt;There is no magic here at all. Let’s go step by step until we got to this implementation. As a first step we need to create some so called &lt;em&gt;tags&lt;/em&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;trait&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ProfileIdTag&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;trait&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ArenaIdTag&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;trait&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BracketIdTag&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;a name=&quot;tagging-convention&quot;&gt;&lt;/a&gt;
+As you can see, tags are ordinary traits without any implementation. In practice arbitrary type can be used as a tag, but traits are usually used for their convenience. The names also doesn’t matter but it’s good practice to use suffix like &lt;code class=&quot;highlighter-rouge&quot;&gt;...Tag&lt;/code&gt; or similar as a convention to distinguish tags from other types. We will see later why.&lt;/p&gt;
+
+&lt;p&gt;Now we are ready to use these tags (traits) to create Tagged types. We are going to use Tagged types implementation provided by &lt;a href=&quot;https://github.com/milessabin/shapeless&quot;&gt;shapeless&lt;/a&gt; (in second part of this article we will look at other implementations).&lt;/p&gt;
+
+&lt;p&gt;For creation of Tagged types we first need to import &lt;a href=&quot;https://github.com/milessabin/shapeless/blob/shapeless-2.3.0-sjs-0.6.8/core/src/main/scala/shapeless/typeoperators.scala#L29&quot;&gt;@@&lt;/a&gt; type definition from shapeless:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;shapeless.tag.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@@&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now we are able to mark (to tag) any type &lt;code class=&quot;highlighter-rouge&quot;&gt;T&lt;/code&gt; with our tag and thus create Tagged type like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;OurIdTag&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;For example when we want to tag &lt;code class=&quot;highlighter-rouge&quot;&gt;String&lt;/code&gt; field of some case class we do it like this: &lt;code class=&quot;highlighter-rouge&quot;&gt;String @@ OurIdTag&lt;/code&gt;. We can tag arbitrary type not just &lt;code class=&quot;highlighter-rouge&quot;&gt;String&lt;/code&gt;, so if we need to tag &lt;code class=&quot;highlighter-rouge&quot;&gt;Int&lt;/code&gt; field of some case class we can do it like this: &lt;code class=&quot;highlighter-rouge&quot;&gt;Int @@ OurIdTag&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Let’s take a look at a definition of &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile&lt;/code&gt; case class with &lt;code class=&quot;highlighter-rouge&quot;&gt;changeBracket&lt;/code&gt; method when we use tagged types:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;case&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ProfileIdTag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ArenaIdTag&lt;/span&gt;, &lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;BracketIdTag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;changeBracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;PlayerProfile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;As you can see it is not so much different from our &lt;a href=&quot;#model-no-tags&quot;&gt;initial implementation&lt;/a&gt;, but what differs significantly is the way how we use this new definition and advantages it brings us. But before we dive into usage, let’s first tackle one problem this new definition has. This problem is unnecessary repetition of &lt;code class=&quot;highlighter-rouge&quot;&gt;String @@ ...&lt;/code&gt; pattern in types declarations. To get rid of this repetition we can introduce simple type aliases for every single type &lt;code class=&quot;highlighter-rouge&quot;&gt;String @@ T&lt;/code&gt;. In our example case we would need to define three type aliases:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ProfileId&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ProfileIdTag&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ArenaId&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ArenaIdTag&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;BracketId&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@@&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BracketIdTag&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;And here they are. Our magical types from &lt;a href=&quot;#magic-types&quot;&gt;above&lt;/a&gt;. It is good practice to keep these type aliases short, since they will be used more than tags itself. This is the reason why we introduced that &lt;a href=&quot;#tagging-convention&quot;&gt;convention&lt;/a&gt; to use &lt;code class=&quot;highlighter-rouge&quot;&gt;..Tag&lt;/code&gt; suffix for traits representing our tags.&lt;/p&gt;
+
+&lt;p&gt;With use of these type aliases we got our final definition as &lt;a href=&quot;#model-with-tags&quot;&gt;shown above&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;We will use these type aliases in the rest of this article.&lt;/p&gt;
+
+&lt;h3 id=&quot;usage&quot;&gt;Usage&lt;/h3&gt;
+
+&lt;p&gt;Now when we try to define &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile&lt;/code&gt; instance explicitly for example like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;playerId&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;firePit&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;bracket1&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;it won’t compile and we got two errors due to type mismatch:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[error] /Users/pepa/tagged-types/src/main/scala/io/vlach/tagged-pt1.scala:32: type mismatch;
+[error]  found   : String(&quot;playerId&quot;)
+[error]  required: io.vlach.tags.ProfileId
+[error]   PlayerProfile(&quot;playerId&quot;, Map(&quot;firePit&quot; -&amp;gt; &quot;bracket1&quot;))
+[error]                 ^
+[error] /Users/pepa/tagged-types/src/main/scala/io/vlach/tagged-pt1.scala:32: type mismatch;
+[error]  found   : (String, String)
+[error]  required: (io.vlach.tags.ArenaId, io.vlach.tags.BracketId)
+[error]   PlayerProfile(&quot;playerId&quot;, Map(&quot;firePit&quot; -&amp;gt; &quot;bracket1&quot;))
+[error]                                           ^
+[error] two errors found
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;These errors are telling us that we are trying to do something what we probably didn’t mean to do. And really, we are using simple &lt;code class=&quot;highlighter-rouge&quot;&gt;String&lt;/code&gt; types where Tagged types are expected. This can clearly be seen in the error messages.&lt;/p&gt;
+
+&lt;p&gt;To fix this problem we must make sure that parameters to &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile.apply&lt;/code&gt; method meet required tags criteria. So how can we create instances of Tagged type from a &lt;code class=&quot;highlighter-rouge&quot;&gt;String&lt;/code&gt; values?&lt;/p&gt;
+
+&lt;p&gt;To turn &lt;code class=&quot;highlighter-rouge&quot;&gt;String&lt;/code&gt; value into Tagged type instaagainsnce we use object &lt;a href=&quot;https://github.com/milessabin/shapeless/blob/shapeless-2.3.0-sjs-0.6.8/core/src/main/scala/shapeless/typeoperators.scala#L25&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tag&lt;/code&gt;&lt;/a&gt; from shapeless. Its usage is simple:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;shapeless.tag&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;profileId&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ProfileId&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;ProfileIdTag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;](&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;profileId&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;arenaId&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;ArenaId&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;ArenaIdTag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;](&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;thePit&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;val&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracketId&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;BracketId&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;BracketIdTag&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;](&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;bracket1&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;And that’s it. Simple like this. We can use these values to create our &lt;code class=&quot;highlighter-rouge&quot;&gt;PlayerProfile&lt;/code&gt; instance explicitly like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;playerId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arenaId&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracketId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;and everything will work as expected. In case we accidentally swapped parameters for &lt;code class=&quot;highlighter-rouge&quot;&gt;arenaId&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;bracketId&lt;/code&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;PlayerProfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;playerId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Map&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketId&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;arenaId&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;We would get compiler errors (output was simplified) telling us that we are doing something we didn’t intended:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[error] /Users/pepa/tagged-types/src/main/scala/io/vlach/tagged-pt1.scala:38: type mismatch;
+[error]  found   : (io.vlach.tags.BracketId, io.vlach.tags.ArenaId)
+[error]  required: (io.vlach.tags.ArenaId, io.vlach.tags.BracketId)
+[error]   PlayerProfile(playerId, Map(bracketId -&amp;gt; arenaId))
+[error]                                         ^
+[error] one error found
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Not only Tagged types save us from wrong usage of values in our program, they even protect us against wrong implementation. When we would try to implement &lt;code class=&quot;highlighter-rouge&quot;&gt;changeBracket&lt;/code&gt; with &lt;code class=&quot;highlighter-rouge&quot;&gt;bracket.id&lt;/code&gt; used instead of &lt;code class=&quot;highlighter-rouge&quot;&gt;arena.id&lt;/code&gt; and vise versa as before:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;changeBracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;Bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;PlayerProfile&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracketMapping&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bracket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;arena&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// won&#39;t compile
+&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;We would again receive compiler error warning us that our types don’t match and thus saving us from potential long bug hunting session later on.&lt;/p&gt;
+
+&lt;p&gt;I hope this article convince you that by using Tagged types you will gain lots of assistence from compiler helping you to avoid wide range of errors you would otherwise encounter at runtime or in better case have to cover by unit tests to prove correct implementation.&lt;/p&gt;
+
+&lt;p&gt;In second part of this article we will cover two main implementation of Tagged types in Scala. Namely Scalaz implementation and Shapeless implementation.&lt;/p&gt;
+
+&lt;p&gt;All code examples can be found on &lt;a href=&quot;https://github.com/VlachJosef/tagged-types-introduction&quot;&gt;Github&lt;/a&gt;.&lt;/p&gt;</content><author><name>Josef Vlach</name><email>vlach.josef@gmail.com</email><uri>http://www.vlachjosef.com</uri></author><summary>Tagged types - maybe you’ve heard about them, maybe you not, maybe you’ve even consider to use them, but decided not to bother in the end. Whatever the case in this article I will introduce them, explain what they are, show why they are useful and why to bother to use them.</summary></entry></feed>
